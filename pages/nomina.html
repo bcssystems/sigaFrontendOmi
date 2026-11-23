@@ -1,20 +1,27 @@
 <div class="page-content">
   <div class="page-header"><div><h4><i class="fas fa-file-invoice-dollar me-2" style="color:var(--primary)"></i>Nómina</h4><small class="text-muted">Generación semanal por lote</small></div></div>
-  <div class="panel-card p-3 mb-3">
-    <div class="row g-2 align-items-end">
+  <ul class="nav nav-tabs mb-3" role="tablist">
+    <li class="nav-item"><button class="nav-link active nomina-tab" data-nomina-tab="generar" type="button"><i class="fas fa-calculator me-1"></i>Generar nómina</button></li>
+    <li class="nav-item"><button class="nav-link nomina-tab" data-nomina-tab="conceptos" type="button"><i class="fas fa-list-check me-1"></i>Deducciones y comisiones</button></li>
+    <li class="nav-item"><button class="nav-link nomina-tab" data-nomina-tab="historial" type="button"><i class="fas fa-history me-1"></i>Nóminas realizadas</button></li>
+  </ul>
+  <section id="nominaTabGenerar" class="nomina-tab-panel">
+    <div class="panel-card p-3"><div class="row g-2 align-items-end">
       <div class="col-md-3"><label class="form-label">Inicio</label><input id="nominaInicio" type="date" class="form-control"></div>
       <div class="col-md-3"><label class="form-label">Fin</label><input id="nominaFin" type="date" class="form-control"></div>
       <div class="col-md-3"><label class="form-label">Fecha de pago</label><input id="nominaPago" type="date" class="form-control"></div>
       <div class="col-md-3"><button id="btnPrepararNomina" class="btn btn-primary w-100"><i class="fas fa-calculator me-1"></i>Preparar lote</button></div>
+    </div></div>
+  </section>
+  <section id="nominaTabConceptos" class="nomina-tab-panel d-none">
+    <div id="nominaRevision" class="panel-card p-3 d-none">
+      <div class="d-flex justify-content-between align-items-center mb-3"><h5 class="mb-0">Revisión del lote</h5><div><button id="btnConfirmarNomina" class="btn btn-outline-primary me-2">Confirmar revisión</button><button id="btnGenerarNomina" class="btn btn-success">Generar lote</button></div></div>
+      <div class="row g-2 mb-3"><div class="col-md-3"><small class="text-muted">Sueldo base</small><strong id="revisionBase" class="d-block">$0.00</strong></div><div class="col-md-3"><small class="text-muted">Comisiones</small><strong id="revisionComisiones" class="d-block">$0.00</strong></div><div class="col-md-3"><small class="text-muted">Deducciones</small><strong id="revisionDeducciones" class="d-block">$0.00</strong></div><div class="col-md-3"><small class="text-muted">Neto</small><strong id="revisionNeto" class="d-block">$0.00</strong></div></div>
+      <div class="table-responsive"><table class="table table-custom"><thead><tr><th>Empleado</th><th>Base</th><th>Comisiones</th><th>Deducciones</th><th>Neto</th><th>Estado</th><th></th></tr></thead><tbody id="nominaRevisionBody"></tbody></table></div>
     </div>
-  </div>
-  <div id="nominaRevision" class="panel-card p-3 d-none">
-    <div class="d-flex justify-content-between align-items-center mb-3"><h5 class="mb-0">Revisión del lote</h5><div><button id="btnConfirmarNomina" class="btn btn-outline-primary me-2">Confirmar revisión</button><button id="btnGenerarNomina" class="btn btn-success">Generar lote</button></div></div>
-    <div class="row g-2 mb-3"><div class="col-md-3"><small class="text-muted">Sueldo base</small><strong id="revisionBase" class="d-block">$0.00</strong></div><div class="col-md-3"><small class="text-muted">Comisiones</small><strong id="revisionComisiones" class="d-block">$0.00</strong></div><div class="col-md-3"><small class="text-muted">Deducciones</small><strong id="revisionDeducciones" class="d-block">$0.00</strong></div><div class="col-md-3"><small class="text-muted">Neto</small><strong id="revisionNeto" class="d-block">$0.00</strong></div></div>
-    <div class="table-responsive"><table class="table table-custom"><thead><tr><th>Empleado</th><th>Base</th><th>Comisiones</th><th>Deducciones</th><th>Neto</th><th>Estado</th><th></th></tr></thead><tbody id="nominaRevisionBody"></tbody></table></div>
-  </div>
-  <div class="panel-card overflow-hidden">
-    <div class="p-3 d-flex justify-content-between align-items-center"><h5 class="mb-0">Nóminas</h5><div class="d-flex gap-2"><input id="nominaBuscar" class="form-control form-control-sm" placeholder="Buscar empleado"><select id="nominaEstado" class="form-select form-select-sm"><option value="">Todos los estados</option><option value="PENDIENTE_REVISION">Pendiente revisión</option><option value="REVISADA">Revisada</option><option value="GENERADA">Generada</option><option value="CANCELADA">Cancelada</option></select></div></div>
-    <div class="table-responsive"><table class="table table-custom mb-0"><thead><tr><th>Empleado</th><th>Periodo</th><th>Base</th><th>Comisiones</th><th>Deducciones</th><th>Neto</th><th>Estado</th><th style="width:70px"></th></tr></thead><tbody id="nominaBody"><tr><td colspan="8"><div class="empty-state"><i class="fas fa-file-invoice-dollar"></i><p>Cargando...</p></div></td></tr></tbody></table></div>
-  </div>
+    <div id="nominaConceptosVacio" class="panel-card p-4 text-center text-muted"><i class="fas fa-circle-info me-1"></i>Prepara un lote para revisar sus deducciones y comisiones.</div>
+  </section>
+  <section id="nominaTabHistorial" class="nomina-tab-panel d-none">
+    <div class="panel-card overflow-hidden"><div class="p-3 d-flex justify-content-between align-items-center"><h5 class="mb-0">Nóminas realizadas</h5><div class="d-flex gap-2"><input id="nominaBuscar" class="form-control form-control-sm" placeholder="Buscar empleado"><select id="nominaEstado" class="form-select form-select-sm"><option value="">Todos los estados</option><option value="PENDIENTE_REVISION">Pendiente revisión</option><option value="REVISADA">Revisada</option><option value="GENERADA">Generada</option><option value="CANCELADA">Cancelada</option></select></div></div><div class="table-responsive"><table class="table table-custom mb-0"><thead><tr><th>Empleado</th><th>Periodo</th><th>Base</th><th>Comisiones</th><th>Deducciones</th><th>Neto</th><th>Estado</th><th style="width:70px"></th></tr></thead><tbody id="nominaBody"><tr><td colspan="8"><div class="empty-state"><i class="fas fa-file-invoice-dollar"></i><p>Cargando...</p></div></td></tr></tbody></table></div></div>
+  </section>
 </div>

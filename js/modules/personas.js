@@ -1,21 +1,11 @@
 let state = { data: [], currentPage: 0, totalPages: 0, pageSize: 10, editingId: null, verInactivas: false, detallePersonaId: null };
 let roles = [];
 let permisosPorModulo = {};
-let horariosLaborales = [];
 
 export function init() {
   bindEvents();
   cargarPersonas(0);
   cargarRolesYPermisos();
-  cargarHorariosLaborales();
-}
-
-async function cargarHorariosLaborales() {
-  try {
-    horariosLaborales = await API.get('/horarios');
-    const select = document.getElementById('personaHorario');
-    if (select) select.innerHTML = '<option value="">Sin horario asignado</option>' + horariosLaborales.filter(h => h.activo !== false).map(h => `<option value="${h.idHorario}">${Utils.esc(h.nombre)}</option>`).join('');
-  } catch (_) {}
 }
 
 function bindEvents() {
@@ -42,6 +32,10 @@ function bindEvents() {
       abrirModal(state.detallePersonaId);
     }
   });
+  document.querySelectorAll('.horario-persona-dia .hp-activo').forEach(check => check.addEventListener('change', () => {
+    const row = check.closest('.horario-persona-dia');
+    row.querySelectorAll('input[type="time"]').forEach(input => { input.disabled = !check.checked; if (!check.checked) input.value = ''; });
+  }));
 }
 
 async function cargarRolesYPermisos() {
@@ -319,7 +313,8 @@ async function abrirModal(id) {
        document.getElementById('personaSueldoBase').value = p.sueldoBase ?? '';
        document.getElementById('personaSueldoSemanal').value = p.sueldoSemanal ?? '';
        document.getElementById('personaSueldoHora').value = p.sueldoHora ?? '';
-       try { const assignment = await API.horarioEmpleado(id); document.getElementById('personaHorario').value = assignment?.horario?.idHorario || ''; } catch (_) { document.getElementById('personaHorario').value = ''; }
+        limpiarEditorHorario();
+        try { const assignment = await API.horarioEmpleado(id); cargarEditorHorario(assignment?.horario); } catch (_) {}
       renderPermisosAdicionales(p.rol ? p.rol.idRol : null, p.permisosAdicionales || []);
     }
   } else {
@@ -328,7 +323,7 @@ async function abrirModal(id) {
     document.getElementById('personaSueldoBase').value = '';
     document.getElementById('personaSueldoSemanal').value = '';
     document.getElementById('personaSueldoHora').value = '';
-    document.getElementById('personaHorario').value = '';
+    limpiarEditorHorario();
     const primerRol = (roles || [])[0];
     renderPermisosAdicionales(primerRol ? primerRol.idRol : null, []);
   }
@@ -372,14 +367,15 @@ async function guardarPersona() {
   }
 
   try {
+    const horario = obtenerHorarioUsuario(data.usuario);
     if (state.editingId) {
       await API.put('/personas/' + state.editingId, data);
-      if (dataHorarioId()) await API.guardarHorarioEmpleado(state.editingId, { horarioId: dataHorarioId() });
+      await guardarHorarioUsuario(state.editingId, horario);
       Utils.showToast('Usuario actualizado', 'success');
     } else {
       const created = await API.post('/personas', data);
       const newId = created?.idPersona;
-      if (newId && dataHorarioId()) await API.guardarHorarioEmpleado(newId, { horarioId: dataHorarioId() });
+      if (newId) await guardarHorarioUsuario(newId, horario);
       Utils.showToast('Usuario creado', 'success');
     }
     bootstrap.Modal.getInstance(document.getElementById('personaModal'))?.hide();
@@ -387,7 +383,49 @@ async function guardarPersona() {
   } catch (err) { Utils.showToast(err.message, 'error'); }
 }
 
-function dataHorarioId() { const value = Number(document.getElementById('personaHorario')?.value); return value > 0 ? value : null; }
+function limpiarEditorHorario() {
+  document.querySelectorAll('.horario-persona-dia').forEach(row => {
+    const check = row.querySelector('.hp-activo');
+    check.checked = false;
+    row.querySelectorAll('input[type="time"]').forEach(input => { input.value = ''; input.disabled = true; });
+  });
+}
+
+function cargarEditorHorario(horario) {
+  limpiarEditorHorario();
+  (horario?.dias || []).forEach(dia => {
+    const row = document.querySelector(`.horario-persona-dia[data-dia="${dia.dia}"]`);
+    if (!row) return;
+    row.querySelector('.hp-activo').checked = true;
+    row.querySelector('.hp-entrada').value = (dia.entrada || '').substring(0, 5);
+    row.querySelector('.hp-salida').value = (dia.salida || '').substring(0, 5);
+    row.querySelector('.hp-break-in').value = (dia.breaks?.[0]?.inicio || '').substring(0, 5);
+    row.querySelector('.hp-break-out').value = (dia.breaks?.[0]?.fin || '').substring(0, 5);
+    row.querySelectorAll('input[type="time"]').forEach(input => input.disabled = false);
+  });
+}
+
+function obtenerHorarioUsuario(nombreUsuario) {
+  const dias = [];
+  document.querySelectorAll('.horario-persona-dia').forEach(row => {
+    const activo = row.querySelector('.hp-activo').checked;
+    if (!activo) return;
+    const entrada = row.querySelector('.hp-entrada').value;
+    const salida = row.querySelector('.hp-salida').value;
+    const breakInicio = row.querySelector('.hp-break-in').value;
+    const breakFin = row.querySelector('.hp-break-out').value;
+    if (!entrada || !salida || entrada >= salida) throw new Error('Completa correctamente la entrada y salida de ' + row.dataset.dia);
+    if ((breakInicio && !breakFin) || (!breakInicio && breakFin) || (breakInicio && breakInicio >= breakFin)) throw new Error('El descanso de ' + row.dataset.dia + ' es inválido');
+    dias.push({ dia: row.dataset.dia, entrada, salida, breaks: breakInicio ? [{ inicio: breakInicio, fin: breakFin }] : [] });
+  });
+  if (!dias.length) throw new Error('Selecciona al menos un día para el horario del usuario');
+  return { nombre: 'Horario - ' + nombreUsuario, dias };
+}
+
+async function guardarHorarioUsuario(personaId, horarioData) {
+  const horario = await API.post('/horarios', horarioData);
+  await API.guardarHorarioEmpleado(personaId, { horarioId: horario.idHorario });
+}
 
 async function confirmarEliminar(id) {
   const confirmed = await Utils.confirmAction('¿Desactivar este usuario?', 'Confirmar', 'Desactivar');

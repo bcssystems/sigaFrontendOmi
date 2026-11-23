@@ -159,7 +159,18 @@
               </li>
             </ul>
           </li>
-          <li><a href="#" class="sidebar-item" data-view="pages/asistencia-laboral.html" data-module="asistencia-laboral"><i class="fas fa-user-clock sidebar-item-icon"></i><span>Mi asistencia</span></a></li>
+          <li>
+            <a href="#" class="sidebar-item sidebar-sub-toggle" data-target="sub-asistencias">
+              <i class="fas fa-chevron-right sidebar-item-arrow"></i>
+              <i class="fas fa-user-clock sidebar-item-icon"></i>
+              <span>Asistencias</span>
+            </a>
+            <ul class="sidebar-submenu" id="sub-asistencias">
+              <li><a href="#" class="sidebar-item sidebar-sub-item" data-view="pages/asistencia-laboral.html" data-module="asistencia-laboral"><i class="fas fa-chart-line sidebar-item-icon"></i><span>Mi asistencia</span></a></li>
+              <li><a href="#" class="sidebar-item sidebar-sub-item" data-view="pages/marcar-asistencia.html" data-module="marcar-asistencia"><i class="fas fa-camera sidebar-item-icon"></i><span>Marcar asistencia</span></a></li>
+              <li><a href="#" class="sidebar-item sidebar-sub-item" data-view="pages/revision-asistencia-laboral.html" data-module="revision-asistencia-laboral" data-permiso="PERSONAS_VER"><i class="fas fa-clipboard-check sidebar-item-icon"></i><span>Revisión de asistencia</span></a></li>
+            </ul>
+          </li>
           <li>
             <a href="#" class="sidebar-item sidebar-sub-toggle" data-target="sub-inventarios">
               <i class="fas fa-chevron-right sidebar-item-arrow"></i>
@@ -185,6 +196,16 @@
                   <span>Movimientos de Inventario</span>
                 </a>
               </li>
+            </ul>
+          </li>
+          <li>
+            <a href="#" class="sidebar-item sidebar-sub-toggle" data-target="sub-nominas">
+              <i class="fas fa-chevron-right sidebar-item-arrow"></i>
+              <i class="fas fa-file-invoice-dollar sidebar-item-icon"></i>
+              <span>Nóminas</span>
+            </a>
+            <ul class="sidebar-submenu" id="sub-nominas">
+              <li><a href="#" class="sidebar-item sidebar-sub-item" data-view="pages/nomina.html" data-module="nomina" data-permiso="NOMINAS_VER"><i class="fas fa-calculator sidebar-item-icon"></i><span>Realizar nóminas</span></a></li>
             </ul>
           </li>
           <li>
@@ -302,9 +323,6 @@
                   <span>Usuarios</span>
                 </a>
               </li>
-              <li><a href="#" class="sidebar-item sidebar-sub-item" data-view="pages/horarios-laborales.html" data-module="horarios-laborales" data-permiso="PERSONAS_VER"><i class="fas fa-calendar-week sidebar-item-icon"></i><span>Horarios laborales</span></a></li>
-              <li><a href="#" class="sidebar-item sidebar-sub-item" data-view="pages/revision-asistencia-laboral.html" data-module="revision-asistencia-laboral" data-permiso="PERSONAS_VER"><i class="fas fa-clipboard-check sidebar-item-icon"></i><span>Revisión de asistencia</span></a></li>
-              <li><a href="#" class="sidebar-item sidebar-sub-item" data-view="pages/nomina.html" data-module="nomina" data-permiso="NOMINAS_VER"><i class="fas fa-file-invoice-dollar sidebar-item-icon"></i><span>Nóminas</span></a></li>
               <li>
                 <a href="#" class="sidebar-item sidebar-sub-item" data-view="pages/roles.html" data-module="roles" data-permiso="ROLES_VER">
                   <i class="fas fa-user-shield sidebar-item-icon"></i>
@@ -396,6 +414,7 @@
     if (sidebarVer && typeof PAYLOAD_VERSION !== 'undefined') sidebarVer.textContent = 'v' + PAYLOAD_VERSION;
   </script>
   <script src="js/api.js"></script>
+  <script src="js/google-maps.js"></script>
   <script src="js/utils.js"></script>
   <script src="js/dashboard.js"></script>
   <script>initSidebarDelegation();</script>

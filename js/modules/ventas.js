@@ -21,6 +21,7 @@ let state = {
   lastCortePreview: null,
   reservas: [],
   gastosPendientes: 0,
+  cajasRequestId: 0,
   idCotizacionActiva: null,
   preciosClienteMap: {},
   configs: {},
@@ -50,49 +51,59 @@ export function init() {
   bindEvents();
   cargarConfiguraciones();
   const lastCajaId = localStorage.getItem('lastCajaId');
-  if (lastCajaId) {
-    autoEntrarCaja(lastCajaId);
+  const lastSucursalId = localStorage.getItem('lastSucursalId');
+  if (lastCajaId && lastSucursalId) {
+    autoEntrarCaja(lastCajaId, lastSucursalId);
   } else {
-    entrarCajaNormal();
+    mostrarSelectorCaja();
   }
 }
 
-async function autoEntrarCaja(id) {
+async function autoEntrarCaja(id, sucursalId) {
   try {
     const caja = await API.get('/cajas/' + id);
-    if (caja.estado === 'ABIERTA') {
+    if (caja.estado === 'ABIERTA' && String(caja.idSucursal) === String(sucursalId)) {
       state.caja = caja;
       iniciarPOS();
       actualizarCajaInfo();
       return;
     }
   } catch (_) {}
-  entrarCajaNormal();
+  mostrarSelectorCaja();
 }
 
-async function entrarCajaNormal() {
+async function mostrarSelectorCaja() {
+  document.getElementById('pos-caja-selector')?.classList.remove('d-none');
+  document.getElementById('pos-interface')?.classList.add('d-none');
   try {
-    const cajas = await API.get('/cajas');
-    const caja = (cajas || []).find(c => (c.tipo || 'NORMAL') === 'NORMAL');
-    if (!caja) {
-      Utils.showToast('No hay caja normal configurada', 'error');
-      return;
-    }
-    if (caja.estado === 'ABIERTA') {
-      state.caja = caja;
-      localStorage.setItem('lastCajaId', caja.idCaja);
-      iniciarPOS();
-      actualizarCajaInfo();
-      return;
-    }
-    const saldo = await Utils.promptInput('Abrir Caja', '\u00bfCon cu\u00e1nto efectivo comienzas?', '0');
-    if (saldo === null) return;
-    await API.post('/cajas/' + caja.idCaja + '/apertura', { saldoInicial: parseFloat(saldo) || 0 });
-    state.caja = await API.get('/cajas/' + caja.idCaja);
-    localStorage.setItem('lastCajaId', caja.idCaja);
-    Utils.showToast('Caja abierta exitosamente', 'success');
-    iniciarPOS();
-    actualizarCajaInfo();
+    state.sucursales = await API.get('/sucursales');
+    const sucursalSelect = document.getElementById('posSucursalSelect');
+    const cajaSelect = document.getElementById('posCajaSelect');
+    const entrarButton = document.getElementById('btnEntrarCaja');
+    if (!sucursalSelect || !cajaSelect || !entrarButton) return;
+    sucursalSelect.innerHTML = '<option value="">-- Selecciona una sucursal --</option>' + (state.sucursales || []).map(s => `<option value="${s.idSucursal}">${Utils.esc(s.nombre)}</option>`).join('');
+    cajaSelect.innerHTML = '<option value="">-- Primero selecciona sucursal --</option>';
+    cajaSelect.disabled = true;
+    entrarButton.disabled = true;
+    sucursalSelect.onchange = async () => {
+      const idSucursal = parseInt(sucursalSelect.value);
+      const requestId = ++state.cajasRequestId;
+      entrarButton.disabled = true;
+      cajaSelect.disabled = true;
+      cajaSelect.innerHTML = idSucursal ? '<option value="">Cargando cajas...</option>' : '<option value="">-- Primero selecciona sucursal --</option>';
+      if (!idSucursal) return;
+      try {
+        const cajas = await API.get('/cajas/sucursal/' + idSucursal);
+        if (requestId !== state.cajasRequestId || String(sucursalSelect.value) !== String(idSucursal)) return;
+        state.cajas = cajas || [];
+        cajaSelect.innerHTML = state.cajas.length ? '<option value="">-- Selecciona una caja --</option>' + state.cajas.map(c => `<option value="${c.idCaja}">${Utils.esc(c.nombre)}${c.estado === 'CERRADA' ? ' (Cerrada)' : ''}</option>`).join('') : '<option value="">No hay cajas activas en esta sucursal</option>';
+        cajaSelect.disabled = !state.cajas.length;
+      } catch (err) {
+        cajaSelect.innerHTML = '<option value="">Error al cargar cajas</option>';
+        Utils.showToast('No se pudieron cargar las cajas: ' + err.message, 'error');
+      }
+    };
+    cajaSelect.onchange = () => { entrarButton.disabled = !parseInt(cajaSelect.value); };
   } catch (err) { Utils.showToast(err.message, 'error'); }
 }
 
@@ -140,6 +151,7 @@ function bindEvents() {
   document.getElementById('btnRealizarVentaRapidaPOS')?.addEventListener('click', realizarVentaRapida);
   document.getElementById('btnAbandonarCaja')?.addEventListener('click', abandonarCaja);
   document.getElementById('btnPromocionesPOS')?.addEventListener('click', abrirPromocionesModal);
+  document.getElementById('btnEntrarCaja')?.addEventListener('click', entrarCaja);
 
   document.getElementById('btnVerInventario')?.addEventListener('click', () => {
     const input = document.getElementById('posProductSearch');
@@ -172,10 +184,6 @@ function bindEvents() {
   document.getElementById('posFilterCategoria')?.addEventListener('change', () => buscarProductos());
 
   document.getElementById('posCliente')?.addEventListener('change', onPosClienteChange);
-}
-
-async function mostrarSelectorCaja() {
-  entrarCajaNormal();
 }
 
 async function cargarProductosParaVenta() {
@@ -1153,6 +1161,28 @@ async function confirmarCobro() {
   } catch (err) { Utils.showToast(err.message, 'error'); }
 }
 
+async function entrarCaja() {
+  const idCaja = parseInt(document.getElementById('posCajaSelect')?.value);
+  const idSucursal = parseInt(document.getElementById('posSucursalSelect')?.value);
+  if (!idSucursal) return Utils.showToast('Selecciona una sucursal', 'warning');
+  if (!idCaja) return Utils.showToast('Selecciona una caja', 'warning');
+  try {
+    state.caja = await API.get('/cajas/' + idCaja);
+    if (String(state.caja.idSucursal) !== String(idSucursal)) return Utils.showToast('La caja no pertenece a la sucursal seleccionada', 'error');
+    if (state.caja.estado === 'CERRADA') {
+      const saldo = await Utils.promptInput('Abrir Caja', '¿Con cuánto efectivo comienzas?', '0');
+      if (saldo === null) return;
+      await API.post('/cajas/' + idCaja + '/apertura', { saldoInicial: parseFloat(saldo) || 0 });
+      state.caja = await API.get('/cajas/' + idCaja);
+      Utils.showToast('Caja abierta exitosamente', 'success');
+    }
+    localStorage.setItem('lastCajaId', String(idCaja));
+    localStorage.setItem('lastSucursalId', String(idSucursal));
+    iniciarPOS();
+    actualizarCajaInfo();
+  } catch (err) { Utils.showToast(err.message, 'error'); }
+}
+
 async function imprimirVentaPendiente() {
   if (!state.caja) { Utils.showToast('No hay caja activa', 'error'); return; }
   if (state.cart.length === 0) { Utils.showToast('Agrega productos a la venta', 'warning'); return; }
@@ -1786,7 +1816,8 @@ async function realizarCorte() {
     if (cortePrint) imprimirTicketCorte(cortePrint);
     localStorage.removeItem('lastCajaId');
     state.caja = null;
-    entrarCajaNormal();
+    localStorage.removeItem('lastSucursalId');
+    mostrarSelectorCaja();
   } catch (err) { Utils.showToast(err.message, 'error'); }
 }
 
@@ -2142,7 +2173,8 @@ async function abandonarCaja() {
   state.caja = null;
   state.reanudandoVentaId = null;
   state.esperaVentas = [];
-  entrarCajaNormal();
+  localStorage.removeItem('lastSucursalId');
+  mostrarSelectorCaja();
 }
 
 function abrirClienteModal() {
