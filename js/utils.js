@@ -300,6 +300,10 @@ const Utils = {
     return signo + '$' + partes.join('.');
   },
 
+  formatCurrency(valor) {
+    return this.formatMonto(valor);
+  },
+
   parseMonto(text) {
     if (text == null) return NaN;
     return parseFloat(String(text).replace(/[^0-9.\-]/g, ''));

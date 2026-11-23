@@ -1,58 +1,85 @@
-let stream = null;
-let photo = null;
+let cameraStream = null;
+let selfieBlob = null;
+let selectedRoute = '/checador/entrada';
+let submitting = false;
+let canEnterToday = false;
+let canExitToday = false;
 
 export function init() {
-  document.getElementById('maCamera')?.addEventListener('click', activarCamara);
-  document.getElementById('maEntrada')?.addEventListener('click', () => marcar('/checador/entrada'));
-  document.getElementById('maSalida')?.addEventListener('click', () => marcar('/checador/salida'));
+  document.getElementById('btnActivarCamara')?.addEventListener('click', activateCamera);
+  document.getElementById('btnTomarSelfie')?.addEventListener('click', takeSelfie);
+  document.getElementById('btnEntrada')?.addEventListener('click', () => chooseAndCapture('/checador/entrada'));
+  document.getElementById('btnSalida')?.addEventListener('click', () => chooseAndCapture('/checador/salida'));
+  loadBoard();
 }
 
-async function activarCamara() {
+async function activateCamera() {
+  if (!navigator.mediaDevices?.getUserMedia) return show('Este navegador no permite usar la cámara en vivo.', 'danger');
   try {
-    stream?.getTracks().forEach(track => track.stop());
-    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
-    const video = document.getElementById('maVideo');
-    video.srcObject = stream;
+    cameraStream?.getTracks().forEach(track => track.stop());
+    cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+    const video = document.getElementById('cameraPreview');
+    video.srcObject = cameraStream;
+    document.querySelector('.camera-box')?.classList.add('active');
     video.classList.remove('d-none');
-    const button = document.createElement('button');
-    button.className = 'btn btn-primary mt-2';
-    button.textContent = 'Tomar selfie';
-    button.onclick = () => tomarSelfie(video, button);
-    document.getElementById('maCamera').after(button);
-  } catch (error) {
-    Utils.showToast('No se pudo activar la cámara: ' + error.message, 'error');
-  }
+    document.getElementById('selfiePreview')?.classList.add('d-none');
+    document.getElementById('selfieStatus').textContent = 'Cámara activa. Elige Entrada o Salida para registrar.';
+    setActionButtons(false);
+  } catch (error) { show('No se pudo activar la cámara: ' + error.message, 'danger'); }
 }
 
-function tomarSelfie(video, button) {
-  const canvas = document.getElementById('maCanvas');
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-  canvas.getContext('2d').drawImage(video, 0, 0);
-  canvas.toBlob(blob => {
-    photo = blob;
-    document.getElementById('maPreview').src = URL.createObjectURL(blob);
-    document.getElementById('maPreview').classList.remove('d-none');
-    video.classList.add('d-none');
-    button.remove();
-    document.getElementById('maEntrada').disabled = false;
-    document.getElementById('maSalida').disabled = false;
-  }, 'image/jpeg', 0.9);
+function chooseAndCapture(route) {
+  selectedRoute = route;
+  if (route.endsWith('entrada') && !canEnterToday) return show('Hoy no tienes jornada asignada o ya registraste entrada.', 'warning');
+  if (route.endsWith('salida') && !canExitToday) return show('No puedes registrar salida sin una entrada vigente.', 'warning');
+  if (!cameraStream) return show('Activa la cámara antes de registrar.', 'warning');
+  takeSelfie();
 }
 
-async function marcar(route) {
-  if (!photo) return Utils.showToast('Toma una selfie primero', 'warning');
+function takeSelfie() {
+  const video = document.getElementById('cameraPreview');
+  if (!cameraStream || !video.videoWidth) return show('Activa la cámara antes de tomar la selfie.', 'warning');
+  const canvas = document.getElementById('cameraCanvas');
+  canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+  canvas.toBlob(async blob => {
+    if (!blob) return show('No se pudo generar la selfie.', 'danger');
+    selfieBlob = blob;
+    const preview = document.getElementById('selfiePreview');
+    preview.src = URL.createObjectURL(blob); preview.classList.remove('d-none'); video.classList.add('d-none');
+    document.getElementById('selfieStatus').textContent = 'Selfie capturada. Obteniendo ubicación para registrar...';
+    setUploadAnimation(true); await register(selectedRoute);
+  }, 'image/jpeg', .92);
+}
+
+function getPosition() { if (!navigator.geolocation) return Promise.reject(new Error('Este navegador no permite obtener ubicación.')); return new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, () => reject(new Error('No se pudo obtener la ubicación.')), { enableHighAccuracy: true, timeout: 15000 })); }
+
+async function register(route) {
+  if (!selfieBlob || submitting) return;
+  submitting = true; setActionButtons(true);
   try {
-    const position = await new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 15000 }));
-    const form = new FormData();
-    form.append('selfie', new File([photo], 'selfie.jpg', { type: 'image/jpeg' }));
-    form.append('latitud', position.coords.latitude);
-    form.append('longitud', position.coords.longitude);
-    form.append('precisionMetros', position.coords.accuracy);
-    await API.upload(route, form);
-    Utils.showToast('Registro enviado', 'success');
-    document.getElementById('maStatus').textContent = 'Asistencia registrada correctamente.';
-  } catch (error) {
-    Utils.showToast(error.message || 'No se pudo registrar la asistencia', 'error');
-  }
+    const geo = await getPosition(); const form = new FormData();
+    form.append('selfie', new File([selfieBlob], 'selfie-' + Date.now() + '.jpg', { type: 'image/jpeg' }));
+    form.append('latitud', geo.coords.latitude); form.append('longitud', geo.coords.longitude); form.append('precisionMetros', geo.coords.accuracy);
+    const response = route.endsWith('entrada') ? await API.entrada(form) : await API.salida(form);
+    document.getElementById('selfieStatus').textContent = (route.endsWith('entrada') ? 'Entrada' : 'Salida') + ' registrada con selfie.';
+    show('Registro enviado correctamente.', 'success');
+    setTimeout(() => window.location.reload(), 800);
+  } catch (error) { document.getElementById('selfieStatus').textContent = 'Selfie lista. El registro no se completó.'; show(error.message || 'No se pudo registrar la asistencia.', 'danger'); }
+  finally { submitting = false; setUploadAnimation(false); setActionButtons(false); loadBoard(); }
 }
+
+function setUploadAnimation(active) { document.getElementById('selfieUploadAnimation')?.classList.toggle('active', active); }
+function setActionButtons(disabled) { const entry = document.getElementById('btnEntrada'); const exit = document.getElementById('btnSalida'); const selfie = document.getElementById('btnTomarSelfie'); if (entry) entry.disabled = disabled || !canEnterToday; if (exit) exit.disabled = disabled || !canExitToday; if (selfie) selfie.disabled = disabled || !cameraStream || (!canEnterToday && !canExitToday); }
+
+async function loadBoard() {
+  try {
+    const data = await API.miTablero(); const records = Array.isArray(data) ? data : (data.asistencias || []); const schedule = data.horario?.horario || data.horario;
+    const weekday = ['DOMINGO','LUNES','MARTES','MIERCOLES','JUEVES','VIERNES','SABADO'][new Date().getDay()]; const scheduledToday = Boolean(schedule?.dias?.some(day => day.dia === weekday));
+    const now = new Date(); const todayKey = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0'); const today = records.find(item => item.fecha === todayKey);
+    canEnterToday = !today?.entrada && scheduledToday; canExitToday = Boolean(today?.entrada && !today?.salida); setActionButtons(false);
+    if (!scheduledToday && !today?.entrada) show('Hoy no tienes horario asignado. No puedes registrar entrada.', 'info');
+  } catch (error) { canEnterToday = false; canExitToday = false; setActionButtons(false); show(error.message, 'danger'); }
+}
+
+function show(message, type) { const el = document.getElementById('asistenciaMensaje'); if (!el) return; el.className = 'alert alert-' + type; el.textContent = message; }
