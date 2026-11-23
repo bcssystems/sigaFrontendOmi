@@ -5,6 +5,7 @@ const defaultCenter = { lat: 19.4326, lng: -99.1332 };
 
 export function init() { bindEvents(); cargarSucursales(); }
 function bindEvents() {
+  document.getElementById('btnNuevaSucursal')?.addEventListener('click', () => abrirModal(null));
   document.getElementById('btnGuardarSucursal')?.addEventListener('click', guardarSucursal);
   document.getElementById('tableSucursalesBody')?.addEventListener('click', handleTableClick);
   ['sucursalLatitud', 'sucursalLongitud'].forEach(id => document.getElementById(id)?.addEventListener('input', syncMarker));

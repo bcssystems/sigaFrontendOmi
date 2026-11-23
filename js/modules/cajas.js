@@ -7,6 +7,7 @@ export function init() {
 }
 
 function bindEvents() {
+  document.getElementById('btnNuevaCaja')?.addEventListener('click', () => abrirModal(null));
   document.getElementById('btnGuardarCaja')?.addEventListener('click', guardarCaja);
   document.getElementById('tableCajasBody')?.addEventListener('click', handleTableClick);
   document.getElementById('filtroSucursal')?.addEventListener('change', cargarCajas);
