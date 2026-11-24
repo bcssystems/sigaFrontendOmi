@@ -640,7 +640,7 @@ body {
 .evidencia-dialog .modal-content { width: fit-content; max-width: 100%; margin: auto; }
 .evidencia-dialog .modal-body { padding: 0 1rem 1rem; text-align: center; }
 .evidencia-photo-body img { display: block; width: auto; max-width: 100%; max-height: 70vh; height: auto; margin: 0 auto; object-fit: contain; }
-.config-card { height: 220px; min-height: 220px; box-sizing: border-box; overflow: hidden; }
+.config-card { height: 280px; min-height: 280px; box-sizing: border-box; }
 .fija-actions-cell { width: 70px; min-width: 70px; text-align: center; white-space: nowrap; }
 .fija-actions-header { width: 70px; min-width: 70px; }
 #deduccionesFijasPanel .table-responsive { overflow-x: auto; }

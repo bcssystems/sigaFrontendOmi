@@ -93,7 +93,8 @@ const API = (() => {
     const response = await fetch(`${baseUrl}${endpoint}`, {
       ...options, method, credentials: 'include', headers
     });
-    if (response.status === 401 && retry && !authEndpoint(endpoint)) {
+    const hasKnownSession = Boolean(session || localStorage.getItem('refreshToken'));
+    if (response.status === 401 && retry && !authEndpoint(endpoint) && (endpoint !== '/auth/me' || hasKnownSession)) {
       try {
         await refresh();
         return request(endpoint, options, false, csrfRetry);
