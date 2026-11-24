@@ -15,6 +15,7 @@ function bindEvents() {
   }
   document.getElementById('btnNuevaPersona')?.addEventListener('click', () => abrirModal(null));
   document.getElementById('btnGuardarPersona')?.addEventListener('click', guardarPersona);
+  ['personaNombre', 'personaApellido'].forEach(id => document.getElementById(id)?.addEventListener('input', actualizarUsuarioAutomatico));
   document.getElementById('tablePersonasBody')?.addEventListener('click', handleTableClick);
   document.getElementById('buscarPersonas')?.addEventListener('input', Utils.debounce(() => cargarPersonas(0), 300));
   document.getElementById('personaPermisosAdicionales')?.addEventListener('change', e => {
@@ -298,6 +299,7 @@ async function abrirModal(id) {
   document.getElementById('personaModalTitle').textContent = id ? 'Editar Usuario' : 'Nuevo Usuario';
   document.getElementById('formPersona').reset();
   document.getElementById('personaId').value = '';
+  document.getElementById('personaUsuario').readOnly = !id;
   cargarSelectRoles();
 
   if (id) {
@@ -386,6 +388,28 @@ async function guardarPersona() {
     bootstrap.Modal.getInstance(document.getElementById('personaModal'))?.hide();
     cargarPersonas(state.currentPage);
   } catch (err) { Utils.showToast(err.message, 'error'); }
+}
+
+function actualizarUsuarioAutomatico() {
+  if (state.editingId) return;
+  const nombre = document.getElementById('personaNombre')?.value.trim() || '';
+  const apellido = document.getElementById('personaApellido')?.value.trim() || '';
+  const primerNombre = normalizarUsuario(nombre.split(/\s+/)[0] || '');
+  const primerApellido = normalizarUsuario(apellido.split(/\s+/)[0] || '');
+  if (!primerNombre || !primerApellido) {
+    document.getElementById('personaUsuario').value = '';
+    return;
+  }
+  const base = primerNombre.charAt(0) + primerApellido;
+  const existentes = new Set((state.data || []).map(p => String(p.usuario || '').toLowerCase()));
+  let usuario = base;
+  let consecutivo = 2;
+  while (existentes.has(usuario.toLowerCase())) usuario = base + consecutivo++;
+  document.getElementById('personaUsuario').value = usuario;
+}
+
+function normalizarUsuario(value) {
+  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
 }
 
 function limpiarEditorHorario() {
