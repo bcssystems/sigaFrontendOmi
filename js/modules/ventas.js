@@ -64,6 +64,16 @@ async function autoEntrarCaja(id, sucursalId) {
     const caja = await API.get('/cajas/' + id);
     if (caja.estado === 'ABIERTA' && String(caja.idSucursal) === String(sucursalId)) {
       state.caja = caja;
+      document.getElementById('pos-caja-selector')?.classList.add('d-none');
+      document.getElementById('pos-interface')?.classList.remove('d-none');
+      const sucursalSelect = document.getElementById('posSucursalSelect');
+      const cajaSelect = document.getElementById('posCajaSelect');
+      if (sucursalSelect) sucursalSelect.value = String(caja.idSucursal || sucursalId);
+      if (cajaSelect) {
+        cajaSelect.innerHTML = '<option value="' + caja.idCaja + '">' + Utils.esc(caja.nombre) + '</option>';
+        cajaSelect.value = String(caja.idCaja);
+        cajaSelect.disabled = false;
+      }
       iniciarPOS();
       actualizarCajaInfo();
       return;
@@ -1178,6 +1188,8 @@ async function entrarCaja() {
     }
     localStorage.setItem('lastCajaId', String(idCaja));
     localStorage.setItem('lastSucursalId', String(idSucursal));
+    document.getElementById('pos-caja-selector')?.classList.add('d-none');
+    document.getElementById('pos-interface')?.classList.remove('d-none');
     iniciarPOS();
     actualizarCajaInfo();
   } catch (err) { Utils.showToast(err.message, 'error'); }

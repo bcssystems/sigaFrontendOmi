@@ -571,8 +571,9 @@ const opt = select.options[select.selectedIndex];
     overlay.className = 'modal fade show d-block';
     overlay.id = 'dynamicDialog';
     overlay.style.backgroundColor = 'rgba(0,0,0,0.5)';
+    const photoDialog = bodyHtml.includes('evidencia-photo-body');
     overlay.innerHTML =
-      '<div class="modal-dialog modal-dialog-centered modal-lg"><div class="modal-content border-0 shadow">' +
+      '<div class="modal-dialog modal-dialog-centered ' + (photoDialog ? 'evidencia-dialog' : 'modal-lg') + '"><div class="modal-content border-0 shadow">' +
         '<div class="modal-header border-0"><h5 class="modal-title fw-bold">' + title + '</h5>' +
         '<button type="button" class="btn-close" onclick="document.getElementById(\'dynamicDialog\').remove()"></button></div>' +
         '<div class="modal-body">' + bodyHtml + '</div>' +
