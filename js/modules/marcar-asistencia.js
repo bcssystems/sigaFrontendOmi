@@ -76,7 +76,7 @@ async function loadBoard() {
     if (!schedule?.dias) { try { const assignment = await API.miHorario(); schedule = assignment?.horario || assignment; } catch (_) {} }
     const weekday = ['DOMINGO','LUNES','MARTES','MIERCOLES','JUEVES','VIERNES','SABADO'][new Date().getDay()]; const scheduledToday = Boolean(schedule?.dias?.some(day => String(day.dia).toUpperCase() === weekday));
     const now = new Date(); const todayKey = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0'); const today = records.find(item => String(item.fecha || '').slice(0, 10) === todayKey);
-    canEnterToday = !today?.entrada && scheduledToday; canExitToday = Boolean(today?.entrada && !today?.salida); setActionButtons(false);
+    canEnterToday = data.puedeRegistrarEntrada !== undefined ? Boolean(data.puedeRegistrarEntrada) : (!today?.entrada && scheduledToday); canExitToday = data.puedeRegistrarSalida !== undefined ? Boolean(data.puedeRegistrarSalida) : Boolean(today?.entrada && !today?.salida); setActionButtons(false);
     if (!scheduledToday && !today?.entrada) show('Hoy no tienes horario asignado. No puedes registrar entrada.', 'info');
   } catch (error) { canEnterToday = false; canExitToday = false; setActionButtons(false); show(error.message, 'danger'); }
 }
