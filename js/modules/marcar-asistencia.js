@@ -68,13 +68,14 @@ async function register(route) {
 }
 
 function setUploadAnimation(active) { document.getElementById('selfieUploadAnimation')?.classList.toggle('active', active); }
-function setActionButtons(disabled) { const selfie = document.getElementById('btnTomarSelfie'); if (!selfie) return; const entering = canEnterToday; selfie.disabled = disabled || !cameraStream || (!canEnterToday && !canExitToday); selfie.innerHTML = '<i class="fas ' + (entering ? 'fa-sign-in-alt' : 'fa-sign-out-alt') + ' me-1"></i>Tomar selfie y registrar ' + (entering ? 'entrada' : 'salida'); selfie.classList.toggle('btn-primary', entering); selfie.classList.toggle('btn-outline-primary', !entering); }
+function setActionButtons(disabled) { const selfie = document.getElementById('btnTomarSelfie'); if (!selfie) return; const entering = canEnterToday; const exiting = canExitToday; const action = entering ? 'entrada' : exiting ? 'salida' : 'movimiento'; selfie.disabled = disabled || !cameraStream || (!entering && !exiting); selfie.innerHTML = '<i class="fas ' + (entering ? 'fa-sign-in-alt' : exiting ? 'fa-sign-out-alt' : 'fa-ban') + ' me-1"></i>' + (action === 'movimiento' ? 'Sin movimiento disponible' : 'Tomar selfie y registrar ' + action); selfie.classList.toggle('btn-primary', entering); selfie.classList.toggle('btn-outline-primary', !entering); }
 
 async function loadBoard() {
   try {
-    const data = await API.miTablero(); const records = Array.isArray(data) ? data : (data.asistencias || []); const schedule = data.horario?.horario || data.horario;
-    const weekday = ['DOMINGO','LUNES','MARTES','MIERCOLES','JUEVES','VIERNES','SABADO'][new Date().getDay()]; const scheduledToday = Boolean(schedule?.dias?.some(day => day.dia === weekday));
-    const now = new Date(); const todayKey = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0'); const today = records.find(item => item.fecha === todayKey);
+    const data = await API.miTablero(); const records = Array.isArray(data) ? data : (data.asistencias || []); let schedule = data.horario?.horario || data.horario;
+    if (!schedule?.dias) { try { const assignment = await API.miHorario(); schedule = assignment?.horario || assignment; } catch (_) {} }
+    const weekday = ['DOMINGO','LUNES','MARTES','MIERCOLES','JUEVES','VIERNES','SABADO'][new Date().getDay()]; const scheduledToday = Boolean(schedule?.dias?.some(day => String(day.dia).toUpperCase() === weekday));
+    const now = new Date(); const todayKey = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0'); const today = records.find(item => String(item.fecha || '').slice(0, 10) === todayKey);
     canEnterToday = !today?.entrada && scheduledToday; canExitToday = Boolean(today?.entrada && !today?.salida); setActionButtons(false);
     if (!scheduledToday && !today?.entrada) show('Hoy no tienes horario asignado. No puedes registrar entrada.', 'info');
   } catch (error) { canEnterToday = false; canExitToday = false; setActionButtons(false); show(error.message, 'danger'); }
