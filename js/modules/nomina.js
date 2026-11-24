@@ -54,12 +54,19 @@ function bindEvents() {
 }
 
 function setFechas() {
-  const today = new Date(); const payment = new Date(today); payment.setDate(payment.getDate() + ((5 - payment.getDay() + 7) % 7));
-  const end = new Date(payment); end.setDate(end.getDate() - 1); const start = new Date(end); start.setDate(start.getDate() - 6);
-  document.getElementById('nominaInicio').value = dateValue(start); document.getElementById('nominaFin').value = dateValue(end); document.getElementById('nominaPago').value = dateValue(payment);
-  document.getElementById('dedFecha').value = dateValue(today); document.getElementById('fijaInicio').value = dateValue(today);
+  const today = new Date();
+  const day = today.getDay();
+  const daysUntilFriday = (5 - day + 7) % 7;
+  const payment = new Date(today.getFullYear(), today.getMonth(), today.getDate() + daysUntilFriday);
+  const end = new Date(payment.getFullYear(), payment.getMonth(), payment.getDate() - 1);
+  const start = new Date(end.getFullYear(), end.getMonth(), end.getDate() - 6);
+  document.getElementById('nominaInicio').value = dateValue(start);
+  document.getElementById('nominaFin').value = dateValue(end);
+  document.getElementById('nominaPago').value = dateValue(payment);
+  document.getElementById('dedFecha').value = dateValue(today);
+  document.getElementById('fijaInicio').value = dateValue(today);
 }
-function dateValue(value) { return value.toISOString().slice(0, 10); }
+function dateValue(value) { return value.getFullYear() + '-' + String(value.getMonth() + 1).padStart(2, '0') + '-' + String(value.getDate()).padStart(2, '0'); }
 function activarTab(tab) { document.querySelectorAll('.nomina-tab').forEach(x => x.classList.toggle('active', x.dataset.tab === tab)); document.querySelectorAll('.nomina-panel').forEach(x => x.classList.add('d-none')); document.getElementById('nominaTab' + tab.charAt(0).toUpperCase() + tab.slice(1))?.classList.remove('d-none'); }
 function mostrarDeducciones(tipo) { const manual = tipo === 'manuales'; document.getElementById('deduccionesManualesPanel').classList.toggle('d-none', !manual); document.getElementById('deduccionesFijasPanel').classList.toggle('d-none', manual); document.getElementById('btnDeduccionesManuales').className = manual ? 'btn btn-primary' : 'btn btn-outline-primary'; document.getElementById('btnDeduccionesFijas').className = manual ? 'btn btn-outline-primary' : 'btn btn-primary'; }
 
