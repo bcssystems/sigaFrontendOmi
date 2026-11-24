@@ -1,10 +1,13 @@
-let state = { data: [], editingId: null, sucursales: [] };
+let state = { data: [], editingId: null, sucursales: [], fondoInicial: 0 };
 
 export function init() {
   bindEvents();
   cargarSucursales();
   cargarCajas();
+  cargarFondoInicial();
 }
+
+async function cargarFondoInicial() { try { const configs = await API.get('/configuraciones'); const config = (configs || []).find(c => c.clave === 'fondoCajaChica'); state.fondoInicial = Number(config?.valor) || 0; } catch (_) {} }
 
 function bindEvents() {
   document.getElementById('btnNuevaCaja')?.addEventListener('click', () => abrirModal(null));
@@ -164,7 +167,7 @@ async function confirmarEliminar(id) {
 function abrirAperturaModal(id) {
   document.getElementById('apCajaId').value = id;
   document.getElementById('formApertura').reset();
-  document.getElementById('apSaldoInicial').value = '0';
+  document.getElementById('apSaldoInicial').value = String(state.fondoInicial);
   new bootstrap.Modal(document.getElementById('cajaAperturaModal')).show();
 }
 

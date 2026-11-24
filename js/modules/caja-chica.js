@@ -1,5 +1,6 @@
 let state = {
   caja: null,
+  fondoInicial: 0,
   movimientos: [],
   gastos: [],
   filtroMov: 'todos'
@@ -7,8 +8,11 @@ let state = {
 
 export function init() {
   bindEvents();
+  cargarFondoInicial();
   cargarCajaChica();
 }
+
+async function cargarFondoInicial() { try { const configs = await API.get('/configuraciones'); const config = (configs || []).find(c => c.clave === 'fondoCajaChica'); state.fondoInicial = Number(config?.valor) || 0; } catch (_) {} }
 
 function bindEvents() {
   document.getElementById('btnIngresarChica')?.addEventListener('click', () => abrirMovimientoModal());
@@ -223,7 +227,7 @@ async function solicitarGasto() {
 
 async function abrirCaja() {
   if (!state.caja) return;
-  const saldo = await Utils.promptInput('Abrir Caja Chica', '\u00bfCon cu\u00e1nto efectivo comienzas?', '0');
+  const saldo = await Utils.promptInput('Abrir Caja Chica', '\u00bfCon cu\u00e1nto efectivo comienzas?', String(state.fondoInicial));
   if (saldo === null) return;
   try {
     await API.post('/cajas/' + state.caja.idCaja + '/apertura', { saldoInicial: parseFloat(saldo) || 0 });

@@ -1180,7 +1180,7 @@ async function entrarCaja() {
     state.caja = await API.get('/cajas/' + idCaja);
     if (String(state.caja.idSucursal) !== String(idSucursal)) return Utils.showToast('La caja no pertenece a la sucursal seleccionada', 'error');
     if (state.caja.estado === 'CERRADA') {
-      const saldo = await Utils.promptInput('Abrir Caja', '¿Con cuánto efectivo comienzas?', '0');
+      const saldo = await Utils.promptInput('Abrir Caja', '¿Con cuánto efectivo comienzas?', String(Number(state.configs.fondoCajaChica) || 0));
       if (saldo === null) return;
       await API.post('/cajas/' + idCaja + '/apertura', { saldoInicial: parseFloat(saldo) || 0 });
       state.caja = await API.get('/cajas/' + idCaja);
