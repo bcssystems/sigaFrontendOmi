@@ -292,6 +292,7 @@ function seleccionarModuloPermiso(moduloCheck) {
 }
 
 async function abrirModal(id) {
+  if (!roles || roles.length === 0) await cargarRolesYPermisos();
   state.editingId = id;
   const modal = new bootstrap.Modal(document.getElementById('personaModal'));
   document.getElementById('personaModalTitle').textContent = id ? 'Editar Usuario' : 'Nuevo Usuario';
@@ -306,8 +307,12 @@ async function abrirModal(id) {
       document.getElementById('personaNombre').value = p.nombre || '';
       document.getElementById('personaApellido').value = p.apellido || '';
       document.getElementById('personaUsuario').value = p.usuario || '';
-      document.getElementById('personaRol').value = p.rol && p.rol.idRol;
-      Utils.updateSearchableOptions('personaRol');
+       const rolSelect = document.getElementById('personaRol');
+       const rolId = p.rol && p.rol.idRol != null ? String(p.rol.idRol) : '';
+       rolSelect.value = rolId;
+       const rolInput = rolSelect.parentElement?.querySelector('.searchable-input');
+       const rolOption = Array.from(rolSelect.options).find(option => option.value === rolId);
+       if (rolInput) rolInput.value = rolOption ? rolOption.textContent : '';
       document.getElementById('personaPassword').required = false;
        document.getElementById('personaActiva').checked = p.activa !== false;
        document.getElementById('personaSueldoBase').value = p.sueldoBase ?? '';

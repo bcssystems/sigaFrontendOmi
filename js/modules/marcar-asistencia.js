@@ -7,9 +7,7 @@ let canExitToday = false;
 
 export function init() {
   document.getElementById('btnActivarCamara')?.addEventListener('click', activateCamera);
-  document.getElementById('btnTomarSelfie')?.addEventListener('click', takeSelfie);
-  document.getElementById('btnEntrada')?.addEventListener('click', () => chooseAndCapture('/checador/entrada'));
-  document.getElementById('btnSalida')?.addEventListener('click', () => chooseAndCapture('/checador/salida'));
+  document.getElementById('btnTomarSelfie')?.addEventListener('click', () => chooseAndCapture(canEnterToday ? '/checador/entrada' : '/checador/salida'));
   loadBoard();
 }
 
@@ -23,7 +21,7 @@ async function activateCamera() {
     document.querySelector('.camera-box')?.classList.add('active');
     video.classList.remove('d-none');
     document.getElementById('selfiePreview')?.classList.add('d-none');
-    document.getElementById('selfieStatus').textContent = 'Cámara activa. Elige Entrada o Salida para registrar.';
+    document.getElementById('selfieStatus').textContent = 'Cámara activa. Toma la selfie para registrar tu movimiento.';
     setActionButtons(false);
   } catch (error) { show('No se pudo activar la cámara: ' + error.message, 'danger'); }
 }
@@ -70,7 +68,7 @@ async function register(route) {
 }
 
 function setUploadAnimation(active) { document.getElementById('selfieUploadAnimation')?.classList.toggle('active', active); }
-function setActionButtons(disabled) { const entry = document.getElementById('btnEntrada'); const exit = document.getElementById('btnSalida'); const selfie = document.getElementById('btnTomarSelfie'); if (entry) entry.disabled = disabled || !canEnterToday; if (exit) exit.disabled = disabled || !canExitToday; if (selfie) selfie.disabled = disabled || !cameraStream || (!canEnterToday && !canExitToday); }
+function setActionButtons(disabled) { const selfie = document.getElementById('btnTomarSelfie'); if (!selfie) return; const entering = canEnterToday; selfie.disabled = disabled || !cameraStream || (!canEnterToday && !canExitToday); selfie.innerHTML = '<i class="fas ' + (entering ? 'fa-sign-in-alt' : 'fa-sign-out-alt') + ' me-1"></i>Tomar selfie y registrar ' + (entering ? 'entrada' : 'salida'); selfie.classList.toggle('btn-primary', entering); selfie.classList.toggle('btn-outline-primary', !entering); }
 
 async function loadBoard() {
   try {
