@@ -647,6 +647,20 @@ body {
 .comision-actions-cell { width: 70px; min-width: 70px; text-align: center; white-space: nowrap; }
 .comision-actions-header { width: 70px; min-width: 70px; }
 #nominaTabComisiones .table-responsive { overflow-x: auto; }
+.horario-persona-grid {
+  display: grid;
+  grid-template-columns: minmax(120px, 1.2fr) minmax(105px, 1fr) minmax(105px, 1fr) minmax(145px, 1.25fr) minmax(145px, 1.25fr);
+  gap: 0.5rem;
+  align-items: center;
+}
+.horario-persona-grid > * { min-width: 0; }
+.horario-persona-grid .form-control { width: 100%; min-width: 0; }
+.horario-persona-header > div { white-space: nowrap; }
+.horario-persona-row .form-check { white-space: nowrap; }
+@media (max-width: 991.98px) {
+  #personaHorarioEditor { overflow-x: auto; }
+  .horario-persona-grid { min-width: 760px; }
+}
 .acciones-kebab .dropdown-menu {
   min-width: 200px;
   font-size: 0.85rem;
