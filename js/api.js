@@ -146,6 +146,23 @@ const API = (() => {
     return response.blob();
   }
 
+  async function download(endpoint, retry = true) {
+    const response = await fetch(`${baseUrl}${endpoint}`, {
+      method: 'GET', credentials: 'include', headers: { Accept: 'application/pdf,application/octet-stream' }
+    });
+    if (response.status === 401 && retry) {
+      try { await refresh(); return download(endpoint, false); }
+      catch (_) { clearAuthState(true); throw new Error('Sesión expirada'); }
+    }
+    if (response.status === 403) throw new Error('No tienes permisos para descargar este archivo');
+    if (!response.ok) {
+      let message = 'No se pudo descargar el archivo';
+      try { const error = await response.json(); message = error.message || error.error || message; } catch (_) {}
+      throw new Error(message);
+    }
+    return response.blob();
+  }
+
   const entrada = formData => upload('/checador/entrada', formData);
   const salida = formData => upload('/checador/salida', formData);
   const miTablero = () => request('/checador/mi-tablero');
@@ -169,7 +186,7 @@ const API = (() => {
     put: (endpoint, body) => request(endpoint, { method: 'PUT', body: JSON.stringify(body) }),
     patch: (endpoint, body) => request(endpoint, { method: 'PATCH', body: body ? JSON.stringify(body) : undefined }),
     del: endpoint => request(endpoint, { method: 'DELETE' }),
-    upload, downloadPost,
+    upload, downloadPost, download,
     requestUpload: upload,
     request,
     entrada, salida, miTablero, miHorario, horarios, horarioEmpleado, guardarHorarioEmpleado,

@@ -91,6 +91,7 @@ const Dashboard = {
     this.filtrarSidebar();
     this.bindEvents();
     this.checkListaNegra();
+    this.actualizarNotificacionesMaker();
   },
 
   filtrarSidebar() {
@@ -148,6 +149,16 @@ const Dashboard = {
       reloadBtn.addEventListener('click', () => Utils.recargarModulo());
     }
 
+    const makerNotifications = document.getElementById('btn-maker-notifications');
+    if (makerNotifications) {
+      makerNotifications.addEventListener('click', () => {
+        const makerLink = document.querySelector('[data-view="pages/maker.html"]');
+        if (!makerLink) return;
+        makerLink.click();
+        window.setTimeout(() => document.querySelector('[data-maker-tab="notifications"]')?.click(), 350);
+      });
+    }
+
     const sidebarToggle = document.getElementById('sidebarToggle');
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebarOverlay');
@@ -176,5 +187,19 @@ const Dashboard = {
         }
       });
     }
+  },
+
+  async actualizarNotificacionesMaker() {
+    const button = document.getElementById('btn-maker-notifications');
+    const badge = document.getElementById('maker-notification-count');
+    if (!button || !badge || !Utils.hasPermiso('MAKER_NOTIFICACIONES_VER')) {
+      if (button) button.classList.add('d-none');
+      return;
+    }
+    try {
+      const count = Number(await API.get('/maker/notificaciones/no-leidas')) || 0;
+      badge.textContent = count > 99 ? '99+' : String(count);
+      badge.classList.toggle('d-none', count === 0);
+    } catch (_) {}
   },
 };
