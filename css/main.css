@@ -644,6 +644,9 @@ body {
 .fija-actions-cell { width: 70px; min-width: 70px; text-align: center; white-space: nowrap; }
 .fija-actions-header { width: 70px; min-width: 70px; }
 #deduccionesFijasPanel .table-responsive { overflow-x: auto; }
+.comision-actions-cell { width: 70px; min-width: 70px; text-align: center; white-space: nowrap; }
+.comision-actions-header { width: 70px; min-width: 70px; }
+#nominaTabComisiones .table-responsive { overflow-x: auto; }
 .acciones-kebab .dropdown-menu {
   min-width: 200px;
   font-size: 0.85rem;

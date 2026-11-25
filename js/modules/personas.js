@@ -16,6 +16,8 @@ function bindEvents() {
   document.getElementById('btnNuevaPersona')?.addEventListener('click', () => abrirModal(null));
   document.getElementById('btnGuardarPersona')?.addEventListener('click', guardarPersona);
   ['personaNombre', 'personaApellido'].forEach(id => document.getElementById(id)?.addEventListener('input', actualizarUsuarioAutomatico));
+  document.getElementById('personaSueldoSemanal')?.addEventListener('input', actualizarSueldoHoraAutomatico);
+  document.querySelectorAll('.horario-persona-dia input[type="time"]').forEach(input => input.addEventListener('input', actualizarSueldoHoraAutomatico));
   document.getElementById('tablePersonasBody')?.addEventListener('click', handleTableClick);
   document.getElementById('buscarPersonas')?.addEventListener('input', Utils.debounce(() => cargarPersonas(0), 300));
   document.getElementById('personaPermisosAdicionales')?.addEventListener('change', e => {
@@ -36,6 +38,7 @@ function bindEvents() {
   document.querySelectorAll('.horario-persona-dia .hp-activo').forEach(check => check.addEventListener('change', () => {
     const row = check.closest('.horario-persona-dia');
     row.querySelectorAll('input[type="time"]').forEach(input => { input.disabled = !check.checked; if (!check.checked) input.value = ''; });
+    actualizarSueldoHoraAutomatico();
   }));
 }
 
@@ -317,17 +320,16 @@ async function abrirModal(id) {
        if (rolInput) rolInput.value = rolOption ? rolOption.textContent : '';
       document.getElementById('personaPassword').required = false;
        document.getElementById('personaActiva').checked = p.activa !== false;
-       document.getElementById('personaSueldoBase').value = p.sueldoBase ?? '';
        document.getElementById('personaSueldoSemanal').value = p.sueldoSemanal ?? '';
        document.getElementById('personaSueldoHora').value = p.sueldoHora ?? '';
-        limpiarEditorHorario();
-        try { const assignment = await API.horarioEmpleado(id); cargarEditorHorario(assignment?.horario); } catch (_) {}
+       limpiarEditorHorario();
+       actualizarSueldoHoraAutomatico();
+       try { const assignment = await API.horarioEmpleado(id); cargarEditorHorario(assignment?.horario); } catch (_) {}
       renderPermisosAdicionales(p.rol ? p.rol.idRol : null, p.permisosAdicionales || []);
     }
   } else {
     document.getElementById('personaPassword').required = true;
     document.getElementById('personaActiva').checked = true;
-    document.getElementById('personaSueldoBase').value = '';
     document.getElementById('personaSueldoSemanal').value = '';
     document.getElementById('personaSueldoHora').value = '';
     limpiarEditorHorario();
@@ -346,6 +348,7 @@ async function abrirModal(id) {
 }
 
 async function guardarPersona() {
+  if (!state.editingId) actualizarUsuarioAutomatico();
   const data = {
     nombre: document.getElementById('personaNombre').value.trim(),
     apellido: document.getElementById('personaApellido').value.trim(),
@@ -355,9 +358,7 @@ async function guardarPersona() {
     permisosAdicionales: Array.from(document.querySelectorAll('.permiso-check:checked:not(:disabled)'))
       .map(cb => Number(cb.dataset.id)),
     activa: document.getElementById('personaActiva').checked,
-    sueldoBase: Number(document.getElementById('personaSueldoBase').value) || 0,
     sueldoSemanal: Number(document.getElementById('personaSueldoSemanal').value) || 0,
-    sueldoHora: Number(document.getElementById('personaSueldoHora').value) || 0,
   };
 
   if (!data.nombre || !data.apellido || !data.usuario) {
@@ -375,6 +376,8 @@ async function guardarPersona() {
 
   try {
     const horario = obtenerHorarioUsuario(data.usuario);
+    const sueldoHora = calcularSueldoHora(data.sueldoSemanal, horario);
+    document.getElementById('personaSueldoHora').value = sueldoHora || '';
     if (state.editingId) {
       await API.put('/personas/' + state.editingId, data);
       await guardarHorarioUsuario(state.editingId, horario);
@@ -382,6 +385,11 @@ async function guardarPersona() {
     } else {
       const created = await API.post('/personas', data);
       const newId = created?.idPersona;
+      if (created?.usuario) {
+        data.usuario = created.usuario;
+        horario.nombre = 'Horario - ' + created.usuario;
+        document.getElementById('personaUsuario').value = created.usuario;
+      }
       if (newId) await guardarHorarioUsuario(newId, horario);
       Utils.showToast('Usuario creado', 'success');
     }
@@ -412,6 +420,46 @@ function normalizarUsuario(value) {
   return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
 }
 
+function actualizarSueldoHoraAutomatico() {
+  const semanal = Number(document.getElementById('personaSueldoSemanal')?.value) || 0;
+  let minutos = 0;
+  document.querySelectorAll('.horario-persona-dia').forEach(row => {
+    if (!row.querySelector('.hp-activo')?.checked) return;
+    const entrada = convertirHoraAMinutos(row.querySelector('.hp-entrada')?.value);
+    const salida = convertirHoraAMinutos(row.querySelector('.hp-salida')?.value);
+    if (entrada == null || salida == null || salida <= entrada) return;
+    let jornada = salida - entrada;
+    const breakInicio = convertirHoraAMinutos(row.querySelector('.hp-break-in')?.value);
+    const breakFin = convertirHoraAMinutos(row.querySelector('.hp-break-out')?.value);
+    if (breakInicio != null && breakFin != null && breakFin > breakInicio) jornada -= breakFin - breakInicio;
+    if (jornada > 0) minutos += jornada;
+  });
+  const horas = minutos / 60;
+  document.getElementById('personaSueldoHora').value = semanal > 0 && horas > 0 ? (semanal / horas).toFixed(2) : '';
+}
+
+function calcularSueldoHora(sueldoSemanal, horario) {
+  const minutos = (horario?.dias || []).reduce((total, dia) => {
+    const entrada = convertirHoraAMinutos(dia.entrada);
+    const salida = convertirHoraAMinutos(dia.salida);
+    if (entrada == null || salida == null || salida <= entrada) return total;
+    const descansos = (dia.breaks || []).reduce((sum, descanso) => {
+      const inicio = convertirHoraAMinutos(descanso.inicio);
+      const fin = convertirHoraAMinutos(descanso.fin);
+      return inicio != null && fin != null && fin > inicio ? sum + fin - inicio : sum;
+    }, 0);
+    return total + Math.max(0, salida - entrada - descansos);
+  }, 0);
+  const horas = minutos / 60;
+  return Number(sueldoSemanal) > 0 && horas > 0 ? Number((Number(sueldoSemanal) / horas).toFixed(2)) : 0;
+}
+
+function convertirHoraAMinutos(value) {
+  if (!value) return null;
+  const [horas, minutos] = String(value).split(':').map(Number);
+  return Number.isFinite(horas) && Number.isFinite(minutos) ? horas * 60 + minutos : null;
+}
+
 function limpiarEditorHorario() {
   document.querySelectorAll('.horario-persona-dia').forEach(row => {
     const check = row.querySelector('.hp-activo');
@@ -432,6 +480,7 @@ function cargarEditorHorario(horario) {
     row.querySelector('.hp-break-out').value = (dia.breaks?.[0]?.fin || '').substring(0, 5);
     row.querySelectorAll('input[type="time"]').forEach(input => input.disabled = false);
   });
+  actualizarSueldoHoraAutomatico();
 }
 
 function obtenerHorarioUsuario(nombreUsuario) {
